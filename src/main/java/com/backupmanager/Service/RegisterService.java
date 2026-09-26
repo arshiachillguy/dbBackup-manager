@@ -37,6 +37,7 @@ public class RegisterService {
         user.setUsername(requestDTO.getUsername());
         user.setEmail(requestDTO.getEmail());
         user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
+        user.setRole("ROLE_USER");
         User savedUser =  userRepository.save(user);
         
         // return response to clinet 
