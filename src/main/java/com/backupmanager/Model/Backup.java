@@ -10,11 +10,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Audited.Table;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
@@ -36,7 +36,6 @@ public class Backup {
     private String dbname;
     
     // where it's saved?
-    @NotBlank
     private String path;
 
     @Enumerated(EnumType.STRING)
@@ -44,6 +43,7 @@ public class Backup {
     private BackupStatus status;
 
     @Column(nullable = false)
+    @CreationTimestamp 
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
