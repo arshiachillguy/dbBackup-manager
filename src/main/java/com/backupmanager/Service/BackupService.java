@@ -3,6 +3,7 @@ package com.backupmanager.Service;
 import com.backupmanager.BackupDTO.BackupResultDTO;
 import com.backupmanager.BackupDTO.CreateBackupRequestDTO;
 import com.backupmanager.BackupDTO.CreateBackupResponseDTO;
+import com.backupmanager.Exception.UserNotFoundException;
 import com.backupmanager.Model.Backup;
 import com.backupmanager.Model.BackupStatus;
 import com.backupmanager.Model.User;
@@ -62,7 +63,7 @@ public class BackupService {
         if (user == null)
         {
 
-            throw new RuntimeException("username not found.");
+            throw new UserNotFoundException("Invalid username or password");
         }
 
         //create a name for every single backup created

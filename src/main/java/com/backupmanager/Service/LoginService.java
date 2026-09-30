@@ -1,8 +1,12 @@
 package com.backupmanager.Service;
 
+import java.security.InvalidAlgorithmParameterException;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.backupmanager.Exception.InvalidCredentialsException;
+import com.backupmanager.Exception.UserNotFoundException;
 import com.backupmanager.LoginDTO.LoginRequestDTO;
 import com.backupmanager.LoginDTO.LoginResponseDTO;
 import com.backupmanager.Model.User;
@@ -26,12 +30,12 @@ public class LoginService {
         User user = userRepository.findByUsername(requestDTO.getUsername());
         if (user == null)
         {
-            throw new RuntimeException("username not found.");
+            throw new UserNotFoundException("Invalid username or password");
         }
 
         if (!passwordEncoder.matches(requestDTO.getPassword(), user.getPassword()))
         {
-            throw new RuntimeException("ops your password was wrong try again.");
+            throw new InvalidCredentialsException("Invalid username or password");
         }
 
         String token = jwtService.generateToken(user.getUsername());
