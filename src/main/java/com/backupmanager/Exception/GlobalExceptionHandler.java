@@ -48,5 +48,18 @@ public class GlobalExceptionHandler {
         
         return new ResponseEntity<>(errorResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @ExceptionHandler(BackupNotFoundException.class)
+    public  ResponseEntity<ErrorResponseDTO> handleDeleteException(RuntimeException runtimeException){
+        ErrorResponseDTO errorResponseDTO = new ErrorResponseDTO();
+
+        errorResponseDTO.setError("BACKUP_NOT_FOUND");
+        errorResponseDTO.setMessage(runtimeException.getMessage());
+        errorResponseDTO.setStatus(HttpStatus.NOT_FOUND.value());
+        errorResponseDTO.setTimestamp(LocalDateTime.now());
+        
+        return new ResponseEntity<>(errorResponseDTO, HttpStatus.NOT_FOUND);
+    }
+
 	
 }
