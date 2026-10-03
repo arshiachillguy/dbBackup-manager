@@ -72,4 +72,9 @@ public class PostgresBackupService {
 
         
     }
+
+    public void delete(String filePath) throws IOException{
+        Path path = Paths.get(filePath);
+        Files.delete(path);
+    }
 }
