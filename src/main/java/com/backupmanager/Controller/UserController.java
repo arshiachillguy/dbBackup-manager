@@ -2,12 +2,12 @@ package com.backupmanager.Controller;
 
 import com.backupmanager.BackupDTO.CreateBackupRequestDTO;
 import com.backupmanager.BackupDTO.CreateBackupResponseDTO;
-import com.backupmanager.PostgresBackupService.PostgresBackupService;
 import com.backupmanager.Service.BackupService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,14 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final BackupService backupService;
-    private final PostgresBackupService postgresBackupService;
 
     public UserController(
-        BackupService backupService,
-        PostgresBackupService postgresBackupService
+        BackupService backupService
     ) {
         this.backupService = backupService;
-        this.postgresBackupService = postgresBackupService;
     }
 
     @GetMapping
@@ -61,5 +58,14 @@ public class UserController {
         String username = authentication.getName();
     
         return backupService.createBackup(requestDTO, username);
+    }
+
+    @DeleteMapping("/delete")
+    public void deleteUser(
+        Authentication authentication
+    )throws IOException , InterruptedException{
+        String username = authentication.getName();
+
+        backupService.deleteUser(username);
     }
 }
