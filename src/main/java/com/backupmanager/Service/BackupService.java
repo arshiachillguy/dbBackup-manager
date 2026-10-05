@@ -4,11 +4,13 @@ import com.backupmanager.BackupDTO.BackupResultDTO;
 import com.backupmanager.BackupDTO.CreateBackupRequestDTO;
 import com.backupmanager.BackupDTO.CreateBackupResponseDTO;
 import com.backupmanager.Exception.BackupNotFoundException;
+import com.backupmanager.Exception.UserHasBackupsException;
 import com.backupmanager.Exception.UserNotFoundException;
 import com.backupmanager.Model.Backup;
 import com.backupmanager.Model.BackupStatus;
 import com.backupmanager.Model.User;
 import com.backupmanager.PostgresBackupService.PostgresBackupService;
+import com.backupmanager.PostgresBackupService.PostgresRestoreService;
 import com.backupmanager.Repository.BackupRepository;
 import com.backupmanager.Repository.UserRepository;
 import java.io.IOException;
@@ -16,6 +18,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,15 +28,18 @@ public class BackupService {
     private final BackupRepository backupRepository;
     private final UserRepository userRepository;
     private final PostgresBackupService postgresBackupService;
+    private final PostgresRestoreService postgresRestoreService;
 
     public BackupService(
         BackupRepository backupRepository,
         UserRepository userRepository,
-        PostgresBackupService postgresBackupService
+        PostgresBackupService postgresBackupService,
+        PostgresRestoreService postgresRestoreService
     ) {
         this.backupRepository = backupRepository;
         this.userRepository = userRepository;
         this.postgresBackupService = postgresBackupService;
+        this.postgresRestoreService = postgresRestoreService;
     }
 
     // get all backups of specifice user
@@ -59,14 +66,13 @@ public class BackupService {
         return responseDTO;
     }
 
-    // get one backup 
+    // get one backup
     public CreateBackupResponseDTO getMyBackup(Long id, String username) {
-        
         Backup backup = backupRepository
             .findByIdAndOwnerUsername(id, username)
             .orElseThrow(() -> new RuntimeException("Backup not found !"));
 
-        CreateBackupResponseDTO responseDTO = new CreateBackupResponseDTO();    
+        CreateBackupResponseDTO responseDTO = new CreateBackupResponseDTO();
 
         responseDTO.setId(backup.getId());
         responseDTO.setBackupName(backup.getBackupName());
@@ -78,16 +84,15 @@ public class BackupService {
         responseDTO.setUpdatedAt(backup.getUpdatedAt());
 
         return responseDTO;
-
     }
 
     // delete one backup
-    public void deleteMyBackup(Long id, String username) throws IOException{
-    
+    public void deleteMyBackup(Long id, String username) throws IOException {
         Backup backup = backupRepository
             .findByIdAndOwnerUsername(id, username)
             .orElseThrow(() -> new BackupNotFoundException("Backup not found"));
-
+            
+            
         postgresBackupService.delete(backup.getPath());
         backupRepository.delete(backup);
     }
@@ -105,7 +110,7 @@ public class BackupService {
 
         //create a name for every single backup created
         String backupName =
-            "backup_manager_" +
+            requestDTO.getDbname() + "_" +
             LocalDateTime.now().format(
                 DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
             );
@@ -117,7 +122,8 @@ public class BackupService {
         backup.setStatus(BackupStatus.CREATING);
 
         BackupResultDTO resultDTO = postgresBackupService.CreateBackup(
-            backupName
+            backupName,
+            requestDTO.getDbname()
         );
 
         if (resultDTO.isSuccess()) {
@@ -142,4 +148,31 @@ public class BackupService {
 
         return responseDTO;
     }
+
+    public void RestoreBackup(Long id, String username)
+        throws IOException, InterruptedException {
+        Backup backup = backupRepository
+            .findByIdAndOwnerUsername(id, username)
+            .orElseThrow(() -> new BackupNotFoundException("Backup not found"));
+
+        postgresRestoreService.restoreBackupService(
+            backup.getDbname(),
+            backup.getPath()
+        );
+    }
+
+    public void deleteUser(String username){
+        User user = userRepository.findByUsername(username);
+        if (user == null){
+            throw new UsernameNotFoundException("User not found");
+        }
+
+        if (backupRepository.existsByOwnerUsername(username)){
+            throw new UserHasBackupsException("Can not delete user because the user has backups");
+        };
+
+        userRepository.delete(user);
+    }
+    
+    
 }
