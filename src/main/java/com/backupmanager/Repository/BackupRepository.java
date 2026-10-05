@@ -12,4 +12,6 @@ public interface BackupRepository extends JpaRepository<Backup , Long>{
     List<Backup> findAllByOwnerUsername(String username);
 
     Optional<Backup> findByIdAndOwnerUsername(Long id, String username);
+
+    boolean existsByOwnerUsername(String username);
 }
