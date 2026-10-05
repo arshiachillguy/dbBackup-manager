@@ -9,10 +9,13 @@ import org.springframework.stereotype.Service;
 
 import com.backupmanager.BackupDTO.BackupResultDTO;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j 
 @Service
 public class PostgresBackupService {
 
-    public BackupResultDTO CreateBackup(String backupName) throws IOException, InterruptedException {
+    public BackupResultDTO CreateBackup(String backupName , String dbname) throws IOException, InterruptedException {
 
         // create backup directory
         Path backupDirectory = Paths.get("backups");
@@ -29,10 +32,16 @@ public class PostgresBackupService {
             "-U",
             "postgres",
             "-d",
-            "backup_manager",
+            dbname,
+            "-FC",
+            "--clean",
+            "--if-exists",
+            "--exclude-table=public.backup",
             "-f",
             backupPath.toString()
         );
+
+        log.info("Executing PostgreSQL command: {}", processBuilder.command());
 
         // starting point
         Process process = processBuilder.start();
@@ -74,7 +83,15 @@ public class PostgresBackupService {
     }
 
     public void delete(String filePath) throws IOException{
+        
+        if (filePath == null) {
+            return;
+        }
+        
         Path path = Paths.get(filePath);
-        Files.delete(path);
+
+        if (Files.exists(path)){
+            Files.delete(path);
+        }
     }
 }
