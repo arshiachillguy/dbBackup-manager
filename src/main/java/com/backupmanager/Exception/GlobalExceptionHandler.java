@@ -12,12 +12,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponseDTO> handleCredentialsException(
-        InvalidCredentialsException Exception
+        InvalidCredentialsException exception
     ) {
         ErrorResponseDTO errorResponseDTO = new ErrorResponseDTO();
 
         errorResponseDTO.setError("INVALID_CREDENTIALS");
-        errorResponseDTO.setMessage(Exception.getMessage());
+        errorResponseDTO.setMessage(exception.getMessage());
         errorResponseDTO.setStatus(HttpStatus.UNAUTHORIZED.value());
         errorResponseDTO.setTimestamp(LocalDateTime.now());
 
@@ -26,12 +26,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleUserException(
-        UserNotFoundException Exception
+        UserNotFoundException exception
     ) {
         ErrorResponseDTO errorResponseDTO = new ErrorResponseDTO();
 
         errorResponseDTO.setError("USER_NOT_FOUND");
-        errorResponseDTO.setMessage(Exception.getMessage());
+        errorResponseDTO.setMessage(exception.getMessage());
         errorResponseDTO.setStatus(HttpStatus.NOT_FOUND.value());
         errorResponseDTO.setTimestamp(LocalDateTime.now());
 
@@ -40,12 +40,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponseDTO> handleRuntimeException(
-        RuntimeException runtimeException
+        RuntimeException exception
     ) {
         ErrorResponseDTO errorResponseDTO = new ErrorResponseDTO();
 
         errorResponseDTO.setError("INTERNAL_ERROR");
-        errorResponseDTO.setMessage(runtimeException.getMessage());
+        errorResponseDTO.setMessage(exception.getMessage());
         errorResponseDTO.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
         errorResponseDTO.setTimestamp(LocalDateTime.now());
 
@@ -56,13 +56,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BackupNotFoundException.class)
-    public ResponseEntity<ErrorResponseDTO> handleDeleteException(
-        RuntimeException runtimeException
+    public ResponseEntity<ErrorResponseDTO> handleBackupNotFoundException(
+        BackupNotFoundException exception
     ) {
         ErrorResponseDTO errorResponseDTO = new ErrorResponseDTO();
 
         errorResponseDTO.setError("BACKUP_NOT_FOUND");
-        errorResponseDTO.setMessage(runtimeException.getMessage());
+        errorResponseDTO.setMessage(exception.getMessage());
         errorResponseDTO.setStatus(HttpStatus.NOT_FOUND.value());
         errorResponseDTO.setTimestamp(LocalDateTime.now());
 
