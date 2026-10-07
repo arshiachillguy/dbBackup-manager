@@ -13,6 +13,8 @@ import com.backupmanager.PostgresBackupService.PostgresBackupService;
 import com.backupmanager.PostgresBackupService.PostgresRestoreService;
 import com.backupmanager.Repository.BackupRepository;
 import com.backupmanager.Repository.UserRepository;
+import com.backupmanager.RestoreDTO.RestoreRresponseDTO;
+
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -149,7 +151,7 @@ public class BackupService {
         return responseDTO;
     }
 
-    public void RestoreBackup(Long id, String username)
+    public RestoreRresponseDTO restoreBackup(Long id, String username)
         throws IOException, InterruptedException {
         Backup backup = backupRepository
             .findByIdAndOwnerUsername(id, username)
@@ -159,6 +161,16 @@ public class BackupService {
             backup.getDbname(),
             backup.getPath()
         );
+
+        RestoreRresponseDTO responseDTO = new RestoreRresponseDTO();
+        responseDTO.setSuccess(true);
+        responseDTO.setMessage("backup seccessfuly restored.");
+        responseDTO.setBackupId(backup.getId());
+        responseDTO.setDbname(backup.getDbname());
+        responseDTO.setBackupName(backup.getBackupName());
+        responseDTO.setRestoredAt(LocalDateTime.now());
+        
+        return responseDTO;
     }
 
     public void deleteUser(String username){
