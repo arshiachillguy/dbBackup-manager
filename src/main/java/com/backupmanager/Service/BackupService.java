@@ -72,7 +72,7 @@ public class BackupService {
     public CreateBackupResponseDTO getMyBackup(Long id, String username) {
         Backup backup = backupRepository
             .findByIdAndOwnerUsername(id, username)
-            .orElseThrow(() -> new RuntimeException("Backup not found !"));
+            .orElseThrow(() -> new BackupNotFoundException("Backup not found !"));
 
         CreateBackupResponseDTO responseDTO = new CreateBackupResponseDTO();
 
