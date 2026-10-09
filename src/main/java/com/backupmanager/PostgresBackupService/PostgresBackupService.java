@@ -14,72 +14,87 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j 
 @Service
 public class PostgresBackupService {
-
-    public BackupResultDTO CreateBackup(String backupName , String dbname) throws IOException, InterruptedException {
-
-        // create backup directory
+    public BackupResultDTO CreateBackup(
+            String backupName,
+            String dbname
+    ) throws IOException, InterruptedException {
+    
+        // 1. Create backup directory
         Path backupDirectory = Paths.get("backups");
-        // if it's not exsist create one directory name's backup
         Files.createDirectories(backupDirectory);
-
-        // create complete file path
-        Path backupPath = backupDirectory.resolve(backupName + ".sql");
-        System.out.println("Backup path = " + backupPath.toAbsolutePath());
-
-        // run command
+    
+        // 2. Create backup file path
+        Path backupPath = backupDirectory.resolve(backupName + ".dump");
+    
+        log.info("Backup path: {}", backupPath.toAbsolutePath());
+    
+        // 3. Build PostgreSQL command
         ProcessBuilder processBuilder = new ProcessBuilder(
             "pg_dump",
-            "-U",
-            "postgres",
-            "-d",
-            dbname,
-            "-FC",
+            "-U", "postgres",
+            "-d", dbname,
+            "-Fc",
             "--clean",
             "--if-exists",
-            "--exclude-table=public.backup",
-            "-f",
-            backupPath.toString()
+            "-f", backupPath.toString()
         );
-
+    
+        // Merge stdout and stderr
+        processBuilder.redirectErrorStream(true);
+    
         log.info("Executing PostgreSQL command: {}", processBuilder.command());
-
-        // starting point
+    
+        // 4. Start process
         Process process = processBuilder.start();
-
-        int exitcode = process.waitFor();
-
-        System.out.println("pg_dump exit code is " + exitcode);
-
-        if (exitcode == 0) {
-            System.out.println("Backup successful");
-
-            if (Files.exists(backupPath)) {
-                // getting the size of backup file created
-                Long size = Files.size(backupPath);
-
-                System.out.println("Backup path = " + backupPath);
-                System.out.println("Backup size = " + size + " bytes");
-
-                return new BackupResultDTO(
-                        backupPath.toString(),
-                        size,
-                        true
-                );
-
-            } else {
-                System.out.println("Backup failed : file was not created");
-            }
-        } else {
-            System.out.println("Backup failed");
+    
+        // 5. Read process output
+        String output;
+    
+        try (var inputStream = process.getInputStream()) {
+            output = new String(
+                inputStream.readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8
+            );
         }
-
+    
+        // 6. Wait for process completion
+        int exitCode = process.waitFor();
+    
+        log.info("pg_dump exit code: {}", exitCode);
+    
+        // 7. Handle process failure
+        if (exitCode != 0) {
+            log.error(
+                "pg_dump failed. Exit code: {}, Output: {}",
+                exitCode,
+                output
+            );
+    
+            Files.deleteIfExists(backupPath);
+    
+            return new BackupResultDTO(null, 0L, false);
+        }
+    
+        // 8. Verify backup file
+        if (!Files.isRegularFile(backupPath)) {
+            log.error("pg_dump completed, but backup file was not created");
+    
+            return new BackupResultDTO(null, 0L, false);
+        }
+    
+        // 9. Get backup file size
+        long size = Files.size(backupPath);
+    
+        log.info("Backup completed successfully");
+        log.info("Backup path: {}", backupPath.toAbsolutePath());
+        log.info("Backup size: {} bytes", size);
+    
+        // 10. Return success result
         return new BackupResultDTO(
-                null,
-                0L,
-                false
+            backupPath.toString(),
+            size,
+            true
         );
-
-        
     }
 
     public void delete(String filePath) throws IOException{
