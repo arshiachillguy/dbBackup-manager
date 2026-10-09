@@ -1,6 +1,6 @@
 package com.backupmanager.Controller;
 
-import com.backupmanager.Service.BackupService;
+import com.backupmanager.Service.UserService;
 import java.io.IOException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/users")
 public class UserController {
 
-    private final BackupService backupService;
+    private final UserService userService;
 
-    public UserController(BackupService backupService) {
-        this.backupService = backupService;
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     @DeleteMapping("/me")
@@ -22,6 +22,6 @@ public class UserController {
         throws IOException, InterruptedException {
         String username = authentication.getName();
 
-        backupService.deleteUser(username);
+        userService.deleteUser(username);
     }
 }
