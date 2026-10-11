@@ -1,4 +1,5 @@
-import { postJson } from './client'
+import { deleteRequest, postJson } from './client'
+import { loadSession } from '../lib/authStorage'
 import type {
   LoginRequest,
   LoginResponse,
@@ -12,4 +13,9 @@ export function register(payload: RegisterRequest): Promise<RegisterResponse> {
 
 export function login(payload: LoginRequest): Promise<LoginResponse> {
   return postJson<LoginResponse>('/api/auth/login', payload)
+}
+
+export function deleteAccount(): Promise<void> {
+  const session = loadSession()
+  return deleteRequest('/api/users/me', { token: session?.token })
 }

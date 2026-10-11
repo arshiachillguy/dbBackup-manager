@@ -3,17 +3,24 @@ import { SelectField } from '../../components/SelectField'
 import type { SelectOption } from '../../components/SelectField'
 import { StatusBadge } from '../../components/StatusBadge'
 import { TextField } from '../../components/TextField'
+import { RestoreBackupDialog } from '../restore/RestoreBackupDialog'
+import { DeleteBackupDialog } from '../delete/DeleteBackupDialog'
+import { RowActionsMenu } from './RowActionsMenu'
+import { listBackups } from '../../api/backupApi'
+import { ApiError } from '../../api/client'
 import { formatBytes, formatDateTime } from '../../lib/format'
-import type { Backup, BackupStatus } from '../../types/backup'
-import { mockBackupHistory } from './mockBackupHistory'
+import { usePreferences } from '../../lib/preferences'
+import type { BackupRecord, BackupStatus } from '../../types/backup'
 import './BackupHistory.css'
 
 interface BackupHistoryPageProps {
   onBack: () => void
+  refreshKey?: number
 }
 
 type StatusFilter = BackupStatus | 'ALL'
 type SortDirection = 'desc' | 'asc'
+type LoadState = 'loading' | 'ready' | 'error'
 
 const STATUS_FILTER_OPTIONS: SelectOption[] = [
   { value: 'ALL', label: 'All Statuses' },
@@ -28,12 +35,64 @@ const SORT_OPTIONS: SelectOption[] = [
   { value: 'asc', label: 'Oldest first' },
 ]
 
-export function BackupHistoryPage({ onBack }: BackupHistoryPageProps) {
+const RESTORE_DISABLED_REASON =
+  'Only completed backups with an available backup file can be restored.'
+
+function isRestorable(backup: BackupRecord): boolean {
+  return (
+    backup.status === 'COMPLETED' &&
+    typeof backup.path === 'string' &&
+    backup.path.trim() !== ''
+  )
+}
+
+export function BackupHistoryPage({
+  onBack,
+  refreshKey = 0,
+}: BackupHistoryPageProps) {
+  const { timeFormat } = usePreferences()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
-  const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null)
+  const [backups, setBackups] = useState<BackupRecord[]>([])
+  const [loadState, setLoadState] = useState<LoadState>('loading')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+  const [selectedBackup, setSelectedBackup] = useState<BackupRecord | null>(null)
+  const [restoreTarget, setRestoreTarget] = useState<BackupRecord | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<BackupRecord | null>(null)
   const detailsCloseRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    let active = true
+
+    async function load() {
+      setLoadState('loading')
+      try {
+        const data = await listBackups()
+        if (!active) {
+          return
+        }
+        setBackups(data)
+        setLoadState('ready')
+      } catch (error) {
+        if (!active) {
+          return
+        }
+        setErrorMessage(
+          error instanceof ApiError
+            ? error.message
+            : 'Unable to load backup history. Please try again.',
+        )
+        setLoadState('error')
+      }
+    }
+
+    load()
+    return () => {
+      active = false
+    }
+  }, [reloadKey, refreshKey])
 
   useEffect(() => {
     if (!selectedBackup) {
@@ -55,7 +114,7 @@ export function BackupHistoryPage({ onBack }: BackupHistoryPageProps) {
   const visibleBackups = useMemo(() => {
     const query = search.trim().toLowerCase()
 
-    return mockBackupHistory
+    return backups
       .filter((backup) => {
         const matchesStatus =
           statusFilter === 'ALL' || backup.status === statusFilter
@@ -70,7 +129,7 @@ export function BackupHistoryPage({ onBack }: BackupHistoryPageProps) {
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         return sortDirection === 'asc' ? difference : -difference
       })
-  }, [search, statusFilter, sortDirection])
+  }, [backups, search, statusFilter, sortDirection])
 
   return (
     <div className="history">
@@ -125,7 +184,28 @@ export function BackupHistoryPage({ onBack }: BackupHistoryPageProps) {
         </div>
 
         <section className="history__panel">
-          {visibleBackups.length > 0 ? (
+          {loadState === 'loading' ? (
+            <div className="history__empty" role="status">
+              <p className="history__empty-title">Loading backups…</p>
+              <p className="history__empty-text">
+                Fetching your backup history.
+              </p>
+            </div>
+          ) : loadState === 'error' ? (
+            <div className="history__empty" role="alert">
+              <p className="history__empty-title history__empty-title--error">
+                Could not load backup history
+              </p>
+              <p className="history__empty-text">{errorMessage}</p>
+              <button
+                type="button"
+                className="history__retry"
+                onClick={() => setReloadKey((key) => key + 1)}
+              >
+                Try again
+              </button>
+            </div>
+          ) : visibleBackups.length > 0 ? (
             <div className="history__table-wrap">
               <table className="history-table">
                 <thead>
@@ -145,26 +225,45 @@ export function BackupHistoryPage({ onBack }: BackupHistoryPageProps) {
                         {backup.backupName}
                       </td>
                       <td className="history-table__muted">{backup.dbname}</td>
-                      <td>{formatDateTime(backup.createdAt)}</td>
-                      <td>{formatBytes(backup.size)}</td>
+                      <td>{formatDateTime(backup.createdAt, timeFormat)}</td>
+                      <td>
+                        {backup.size === null ? '—' : formatBytes(backup.size)}
+                      </td>
                       <td>
                         <StatusBadge status={backup.status} />
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="history__details-button"
-                          onClick={() => setSelectedBackup(backup)}
-                        >
-                          View Details
-                        </button>
+                        <RowActionsMenu
+                          label={`Actions for ${backup.backupName}`}
+                          actions={[
+                            {
+                              key: 'details',
+                              label: 'View Details',
+                              onSelect: () => setSelectedBackup(backup),
+                            },
+                            {
+                              key: 'restore',
+                              label: 'Restore',
+                              disabled: !isRestorable(backup),
+                              title: isRestorable(backup)
+                                ? undefined
+                                : RESTORE_DISABLED_REASON,
+                              onSelect: () => setRestoreTarget(backup),
+                            },
+                            {
+                              key: 'delete',
+                              label: 'Delete',
+                              onSelect: () => setDeleteTarget(backup),
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : mockBackupHistory.length === 0 ? (
+          ) : backups.length === 0 ? (
             <div className="history__empty">
               <p className="history__empty-title">No backups yet</p>
               <p className="history__empty-text">
@@ -227,34 +326,51 @@ export function BackupHistoryPage({ onBack }: BackupHistoryPageProps) {
               </div>
               <div>
                 <dt>Creation Date</dt>
-                <dd>{formatDateTime(selectedBackup.createdAt)}</dd>
+                <dd>{formatDateTime(selectedBackup.createdAt, timeFormat)}</dd>
               </div>
               <div>
                 <dt>Last Updated</dt>
-                <dd>{formatDateTime(selectedBackup.updatedAt)}</dd>
+                <dd>
+                  {selectedBackup.updatedAt
+                    ? formatDateTime(selectedBackup.updatedAt, timeFormat)
+                    : '—'}
+                </dd>
               </div>
               <div>
                 <dt>File Size</dt>
-                <dd>{formatBytes(selectedBackup.size)}</dd>
+                <dd>
+                  {selectedBackup.size === null
+                    ? '—'
+                    : formatBytes(selectedBackup.size)}
+                </dd>
               </div>
               <div>
                 <dt>File Path</dt>
                 <dd className="history__details-path">
-                  {selectedBackup.path}
+                  {selectedBackup.path ?? '—'}
                 </dd>
               </div>
-              <div>
-                <dt>Owner</dt>
-                <dd>{selectedBackup.owner.username}</dd>
-              </div>
             </dl>
-
-            <p className="history__details-note">
-              This is mock data shown for demonstration. No backend request was
-              made.
-            </p>
           </aside>
         </>
+      )}
+
+      {restoreTarget && (
+        <RestoreBackupDialog
+          backup={restoreTarget}
+          onClose={() => setRestoreTarget(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteBackupDialog
+          backup={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setDeleteTarget(null)
+            setReloadKey((key) => key + 1)
+          }}
+        />
       )}
     </div>
   )

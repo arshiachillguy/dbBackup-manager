@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { StatusBadge } from '../../components/StatusBadge'
+import { listBackups } from '../../api/backupApi'
+import { ApiError } from '../../api/client'
 import { formatBytes, formatDateTime } from '../../lib/format'
 import { getInitials } from '../../lib/name'
-import { mockBackups } from './mockBackups'
+import { usePreferences } from '../../lib/preferences'
+import { DeleteBackupDialog } from '../delete/DeleteBackupDialog'
+import { RowActionsMenu } from '../history/RowActionsMenu'
+import { RestoreBackupDialog } from '../restore/RestoreBackupDialog'
 import { summarizeBackups } from './summary'
+import type { BackupRecord } from '../../types/backup'
 import './Dashboard.css'
 
 interface DashboardProps {
@@ -15,6 +21,29 @@ interface DashboardProps {
   onViewSettings: () => void
 }
 
+type LoadState = 'loading' | 'ready' | 'error'
+
+const RECENT_LIMIT = 10
+
+const RESTORE_DISABLED_REASON =
+  'Only completed backups with an available backup file can be restored.'
+
+function isRestorable(backup: BackupRecord): boolean {
+  return (
+    backup.status === 'COMPLETED' &&
+    typeof backup.path === 'string' &&
+    backup.path.trim() !== ''
+  )
+}
+
+function toTimestamp(value: string | null | undefined): number {
+  if (!value) {
+    return Number.NEGATIVE_INFINITY
+  }
+  const time = Date.parse(value)
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
+}
+
 export function Dashboard({
   username,
   onSignOut,
@@ -23,10 +52,60 @@ export function Dashboard({
   onViewProfile,
   onViewSettings,
 }: DashboardProps) {
+  const { timeFormat } = usePreferences()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [backups, setBackups] = useState<BackupRecord[]>([])
+  const [loadState, setLoadState] = useState<LoadState>('loading')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+  const [selectedBackup, setSelectedBackup] = useState<BackupRecord | null>(null)
+  const [restoreTarget, setRestoreTarget] = useState<BackupRecord | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<BackupRecord | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const detailsCloseRef = useRef<HTMLButtonElement>(null)
 
-  const summary = summarizeBackups(mockBackups)
+  useEffect(() => {
+    let active = true
+
+    async function load() {
+      setLoadState('loading')
+      try {
+        const data = await listBackups()
+        if (!active) {
+          return
+        }
+        setBackups(data)
+        setLoadState('ready')
+      } catch (error) {
+        if (!active) {
+          return
+        }
+        setErrorMessage(
+          error instanceof ApiError
+            ? error.message
+            : 'Unable to load recent backups. Please try again.',
+        )
+        setLoadState('error')
+      }
+    }
+
+    load()
+    return () => {
+      active = false
+    }
+  }, [reloadKey])
+
+  const recentBackups = useMemo(
+    () =>
+      [...backups]
+        .sort(
+          (a, b) => toTimestamp(b.createdAt) - toTimestamp(a.createdAt),
+        )
+        .slice(0, RECENT_LIMIT),
+    [backups],
+  )
+
+  const summary = summarizeBackups(backups)
 
   const cards = [
     { label: 'Total Backups', value: summary.total, tone: 'neutral' },
@@ -50,6 +129,23 @@ export function Dashboard({
 
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!selectedBackup) {
+      return
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setSelectedBackup(null)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    detailsCloseRef.current?.focus()
+
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedBackup])
 
   return (
     <div className="dashboard">
@@ -195,34 +291,195 @@ export function Dashboard({
               Create Backup
             </button>
           </div>
-          <div className="dashboard__table-wrap">
-            <table className="backup-table">
-              <thead>
-                <tr>
-                  <th scope="col">Backup Name</th>
-                  <th scope="col">Database</th>
-                  <th scope="col">Created At</th>
-                  <th scope="col">Size</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockBackups.map((backup) => (
-                  <tr key={backup.id}>
-                    <td className="backup-table__name">{backup.backupName}</td>
-                    <td className="backup-table__database">{backup.dbname}</td>
-                    <td>{formatDateTime(backup.createdAt)}</td>
-                    <td>{formatBytes(backup.size)}</td>
+          {loadState === 'loading' ? (
+            <div className="dashboard__state" role="status">
+              <p className="dashboard__state-title">Loading recent backups…</p>
+              <p className="dashboard__state-text">
+                Fetching your latest backups.
+              </p>
+            </div>
+          ) : loadState === 'error' ? (
+            <div className="dashboard__state" role="alert">
+              <p className="dashboard__state-title dashboard__state-title--error">
+                Could not load recent backups
+              </p>
+              <p className="dashboard__state-text">{errorMessage}</p>
+              <button
+                type="button"
+                className="dashboard__state-retry"
+                onClick={() => setReloadKey((key) => key + 1)}
+              >
+                Try again
+              </button>
+            </div>
+          ) : recentBackups.length === 0 ? (
+            <div className="dashboard__state">
+              <p className="dashboard__state-title">No backups yet</p>
+              <p className="dashboard__state-text">
+                Your database backups will appear here once they are created.
+              </p>
+            </div>
+          ) : (
+            <div className="dashboard__table-wrap">
+              <table className="backup-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Backup Name</th>
+                    <th scope="col">Database</th>
+                    <th scope="col">Created At</th>
+                    <th scope="col">Size</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentBackups.map((backup) => (
+                    <tr key={backup.id}>
+                      <td className="backup-table__name">
+                        {backup.backupName}
+                      </td>
+                      <td className="backup-table__database">
+                        {backup.dbname}
+                      </td>
+                      <td>{formatDateTime(backup.createdAt, timeFormat)}</td>
+                      <td>
+                        {backup.size === null
+                          ? '—'
+                          : formatBytes(backup.size)}
+                      </td>
                       <td>
                         <StatusBadge status={backup.status} />
                       </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td>
+                        <RowActionsMenu
+                          label={`Actions for ${backup.backupName}`}
+                          actions={[
+                            {
+                              key: 'details',
+                              label: 'View Details',
+                              onSelect: () => setSelectedBackup(backup),
+                            },
+                            {
+                              key: 'restore',
+                              label: 'Restore',
+                              disabled: !isRestorable(backup),
+                              title: isRestorable(backup)
+                                ? undefined
+                                : RESTORE_DISABLED_REASON,
+                              onSelect: () => setRestoreTarget(backup),
+                            },
+                            {
+                              key: 'delete',
+                              label: 'Delete',
+                              onSelect: () => setDeleteTarget(backup),
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </main>
+
+      {selectedBackup && (
+        <>
+          <div
+            className="dashboard__overlay"
+            onClick={() => setSelectedBackup(null)}
+            aria-hidden="true"
+          />
+          <aside
+            className="dashboard__details"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-details-title"
+          >
+            <div className="dashboard__details-head">
+              <h2
+                className="dashboard__details-title"
+                id="dashboard-details-title"
+              >
+                Backup details
+              </h2>
+              <button
+                type="button"
+                ref={detailsCloseRef}
+                className="dashboard__details-close"
+                aria-label="Close backup details"
+                onClick={() => setSelectedBackup(null)}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+
+            <dl className="dashboard__details-list">
+              <div>
+                <dt>Backup Name</dt>
+                <dd>{selectedBackup.backupName}</dd>
+              </div>
+              <div>
+                <dt>Database Name</dt>
+                <dd>{selectedBackup.dbname}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <StatusBadge status={selectedBackup.status} />
+                </dd>
+              </div>
+              <div>
+                <dt>Creation Date</dt>
+                <dd>{formatDateTime(selectedBackup.createdAt, timeFormat)}</dd>
+              </div>
+              <div>
+                <dt>Last Updated</dt>
+                <dd>
+                  {selectedBackup.updatedAt
+                    ? formatDateTime(selectedBackup.updatedAt, timeFormat)
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>File Size</dt>
+                <dd>
+                  {selectedBackup.size === null
+                    ? '—'
+                    : formatBytes(selectedBackup.size)}
+                </dd>
+              </div>
+              <div>
+                <dt>File Path</dt>
+                <dd className="dashboard__details-path">
+                  {selectedBackup.path ?? '—'}
+                </dd>
+              </div>
+            </dl>
+          </aside>
+        </>
+      )}
+
+      {restoreTarget && (
+        <RestoreBackupDialog
+          backup={restoreTarget}
+          onClose={() => setRestoreTarget(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteBackupDialog
+          backup={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setDeleteTarget(null)
+            setSelectedBackup(null)
+            setReloadKey((key) => key + 1)
+          }}
+        />
+      )}
     </div>
   )
 }

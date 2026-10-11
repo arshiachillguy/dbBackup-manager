@@ -15,6 +15,9 @@ export const DATABASE_TYPES: DatabaseType[] = [
 
 export const DEFAULT_DATABASE_TYPE = 'postgresql'
 
+export const DEFAULT_DATABASE_HOST = 'localhost'
+export const DEFAULT_DATABASE_PORT = '5432'
+
 export function getDatabaseTypeLabel(label: string, available: boolean): string {
   return available ? label : `${label} — Coming Soon`
 }

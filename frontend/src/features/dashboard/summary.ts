@@ -1,6 +1,6 @@
-import type { Backup, BackupSummary } from '../../types/backup'
+import type { BackupRecord, BackupSummary } from '../../types/backup'
 
-export function summarizeBackups(records: Backup[]): BackupSummary {
+export function summarizeBackups(records: BackupRecord[]): BackupSummary {
   return records.reduce<BackupSummary>(
     (summary, record) => {
       summary.total += 1

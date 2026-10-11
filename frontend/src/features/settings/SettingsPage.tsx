@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { SelectField } from '../../components/SelectField'
 import { ToggleSwitch } from '../../components/ToggleSwitch'
+import { formatDateTime } from '../../lib/format'
+import { useNotifications } from '../../lib/notifications'
+import { usePreferences } from '../../lib/preferences'
+import type { ThemeChoice, TimeFormat } from '../../lib/preferences'
 import './Settings.css'
 
 interface SettingsPageProps {
   onBack: () => void
 }
-
-type ThemeChoice = 'dark' | 'light'
-type TimeFormat = '12-hour' | '24-hour'
 
 const THEME_OPTIONS = [
   { value: 'dark', label: 'Dark' },
@@ -20,25 +21,31 @@ const TIME_FORMAT_OPTIONS = [
   { value: '24-hour', label: '24-hour (e.g. 14:30)' },
 ]
 
-const DEMO_PREVIEW_TIME = new Date('2026-01-15T14:30:00')
-
-function formatPreviewTime(timeFormat: TimeFormat): string {
-  return new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: timeFormat === '12-hour',
-  }).format(DEMO_PREVIEW_TIME)
-}
+const DEMO_PREVIEW_TIME = '2026-01-15T14:30:00'
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
-  const [theme, setTheme] = useState<ThemeChoice>('dark')
-  const [backupNotifications, setBackupNotifications] = useState(true)
-  const [failureNotifications, setFailureNotifications] = useState(true)
-  const [timeFormat, setTimeFormat] = useState<TimeFormat>('24-hour')
+  const {
+    theme,
+    timeFormat,
+    backupNotifications,
+    failureNotifications,
+    setTheme,
+    setTimeFormat,
+    setBackupNotifications,
+    setFailureNotifications,
+  } = usePreferences()
+  const { notify } = useNotifications()
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   function handleSave() {
-    setSaveMessage('Demo only — preferences have not been saved to the server.')
+    const message = 'Preferences saved. Your changes are applied.'
+    setSaveMessage(message)
+    notify({
+      variant: 'success',
+      title: 'Preferences saved',
+      message,
+      kind: 'system',
+    })
   }
 
   return (
@@ -69,8 +76,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             onChange={(event) => setTheme(event.target.value as ThemeChoice)}
           />
           <p className="settings__card-note">
-            Demo only — theme switching is not applied. This app follows your
-            system appearance.
+            Choose between a dark or light interface. Your selection is applied
+            immediately and saved to this browser.
           </p>
         </section>
 
@@ -97,9 +104,6 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               onChange={setFailureNotifications}
             />
           </div>
-          <p className="settings__card-note">
-            Demo only — toggles are not saved and no notifications are sent.
-          </p>
         </section>
 
         <section
@@ -114,10 +118,17 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             label="Date/time display"
             value={timeFormat}
             options={TIME_FORMAT_OPTIONS}
-            onChange={(event) => setTimeFormat(event.target.value as TimeFormat)}
+            onChange={(event) =>
+              setTimeFormat(event.target.value as TimeFormat)
+            }
           />
           <p className="settings__preview">
-            Preview: <span>{formatPreviewTime(timeFormat)}</span>
+            Preview:{' '}
+            <span>{formatDateTime(DEMO_PREVIEW_TIME, timeFormat)}</span>
+          </p>
+          <p className="settings__card-note">
+            Dates and times across the dashboard and backup history follow this
+            format.
           </p>
         </section>
 

@@ -50,7 +50,7 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
-  max-width: 880px;
+  max-width: 720px;
   margin: 0 auto;
   padding: 32px;
 }
@@ -178,140 +178,49 @@
   font-size: 14px;
 }
 
-.profile__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 600;
-  background: var(--success-bg);
-  border: 1px solid var(--success-border);
-  color: var(--success);
-}
+/* Delete account */
 
-.profile__status::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-/* Buttons */
-
-.profile__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
-  background: var(--primary);
-  color: var(--primary-contrast);
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    opacity 0.15s ease;
-}
-
-.profile__button:hover:not(:disabled) {
-  background: var(--primary-hover);
-}
-
-.profile__button:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-.profile__button--secondary {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--text);
-}
-
-.profile__button--secondary:hover:not(:disabled) {
-  background: var(--bg);
-  border-color: var(--primary);
-}
-
-.profile__button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Edit form */
-
-.profile__form {
+.profile__delete-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 6px;
 }
 
-.profile__form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-/* Demo notice */
-
-.profile__notice {
-  border-radius: 11px;
-  padding: 11px 13px;
-  font-size: 13.5px;
-  background: var(--success-bg);
-  border: 1px solid var(--success-border);
-  color: var(--success);
-}
-
-/* Security */
-
-.profile__security-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.profile__security-label {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.profile__security-text {
-  margin-top: 4px;
+.profile__delete-text {
   color: var(--muted);
   font-size: 13.5px;
   line-height: 1.5;
 }
 
-.profile__security-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.profile__coming-soon {
+.profile__delete-button {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  justify-content: center;
+  font: inherit;
+  font-size: 14px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  background: rgba(217, 119, 6, 0.12);
-  border: 1px solid rgba(217, 119, 6, 0.32);
-  color: #b45309;
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid var(--danger-border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.profile__delete-button:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+.profile__delete-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* Responsive */
@@ -342,19 +251,7 @@
     align-items: flex-start;
   }
 
-  .profile__button {
+  .profile__delete-button {
     width: 100%;
-  }
-
-  .profile__security-actions {
-    width: 100%;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .profile__coming-soon {
-    background: rgba(251, 191, 36, 0.14);
-    border-color: rgba(251, 191, 36, 0.34);
-    color: #fbbf24;
   }
 }

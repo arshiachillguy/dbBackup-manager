@@ -24,6 +24,7 @@ type AppView =
 function App() {
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
   const [view, setView] = useState<AppView>('dashboard')
+  const [historyVersion, setHistoryVersion] = useState(0)
 
   function handleAuthenticated(response: LoginResponse) {
     const next: AuthSession = {
@@ -45,20 +46,31 @@ function App() {
 
   if (session) {
     if (view === 'create-backup') {
-      return <CreateBackupPage onBack={() => setView('dashboard')} />
+      return (
+        <CreateBackupPage
+          onBack={() => setView('dashboard')}
+          onViewHistory={() => setView('backup-history')}
+          onBackupCreated={() => setHistoryVersion((version) => version + 1)}
+        />
+      )
     }
 
     if (view === 'backup-history') {
-      return <BackupHistoryPage onBack={() => setView('dashboard')} />
+      return (
+        <BackupHistoryPage
+          onBack={() => setView('dashboard')}
+          refreshKey={historyVersion}
+        />
+      )
     }
 
     if (view === 'profile') {
       return (
         <ProfilePage
-          id={session.id}
           username={session.username}
           email={session.email}
           onBack={() => setView('dashboard')}
+          onDeleted={handleSignOut}
         />
       )
     }

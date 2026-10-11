@@ -23,3 +23,31 @@ export interface BackupSummary {
   completed: number
   failed: number
 }
+
+export interface CreateBackupRequest {
+  dbname: string
+  host: string
+  port: number
+  username: string
+  password: string
+}
+
+export interface BackupRecord {
+  id: number
+  backupName: string
+  dbname: string
+  path: string | null
+  size: number | null
+  status: BackupStatus
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface RestoreResult {
+  success: boolean
+  message: string
+  backupId: number
+  backupName: string
+  dbname: string
+  restoredAt: string
+}

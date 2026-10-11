@@ -40,13 +40,22 @@ async function parseError(response: Response): Promise<ApiError> {
 export async function postJson<TResponse>(
   path: string,
   payload: unknown,
+  options?: { token?: string },
 ): Promise<TResponse> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  if (options?.token) {
+    headers.Authorization = `Bearer ${options.token}`
+  }
+
   let response: Response
 
   try {
     response = await fetch(resolveUrl(path), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
     })
   } catch {
@@ -61,6 +70,60 @@ export async function postJson<TResponse>(
   }
 
   return (await response.json()) as TResponse
+}
+
+export async function getJson<TResponse>(
+  path: string,
+  options?: { token?: string },
+): Promise<TResponse> {
+  const headers: Record<string, string> = {}
+
+  if (options?.token) {
+    headers.Authorization = `Bearer ${options.token}`
+  }
+
+  let response: Response
+
+  try {
+    response = await fetch(resolveUrl(path), { method: 'GET', headers })
+  } catch {
+    throw new ApiError(
+      'Unable to reach the server. Check your connection and try again.',
+      0,
+    )
+  }
+
+  if (!response.ok) {
+    throw await parseError(response)
+  }
+
+  return (await response.json()) as TResponse
+}
+
+export async function deleteRequest(
+  path: string,
+  options?: { token?: string },
+): Promise<void> {
+  const headers: Record<string, string> = {}
+
+  if (options?.token) {
+    headers.Authorization = `Bearer ${options.token}`
+  }
+
+  let response: Response
+
+  try {
+    response = await fetch(resolveUrl(path), { method: 'DELETE', headers })
+  } catch {
+    throw new ApiError(
+      'Unable to reach the server. Check your connection and try again.',
+      0,
+    )
+  }
+
+  if (!response.ok) {
+    throw await parseError(response)
+  }
 }
 
 export function getApiBaseUrl(): string {
