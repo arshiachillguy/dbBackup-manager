@@ -125,7 +125,11 @@ public class BackupService {
 
         BackupResultDTO resultDTO = postgresBackupService.CreateBackup(
             backupName,
-            requestDTO.getDbname()
+            requestDTO.getDbname(),
+            requestDTO.getHost(),
+            requestDTO.getPort(),
+            requestDTO.getUsername(),
+            requestDTO.getPassword()
         );
 
         if (resultDTO.isSuccess()) {

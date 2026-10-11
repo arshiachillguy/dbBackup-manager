@@ -1,6 +1,8 @@
 package com.backupmanager.PostgresBackupService;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.springframework.stereotype.Service;
 
@@ -22,6 +24,12 @@ public class PostgresRestoreService {
 
         log.info("Executing PostgreSQL command: {}", processBuilder.command());
 
+        Path backupPath = Path.of(filePath).toAbsolutePath().normalize();
+
+        if (!Files.isRegularFile(backupPath)) {
+            throw new IOException("Backup file not found " + backupPath);
+        }
+        
         //starting point 
         Process process = processBuilder.start();
         

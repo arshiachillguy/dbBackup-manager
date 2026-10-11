@@ -4,9 +4,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import com.backupmanager.Model.Backup;
-
+@Repository 
 public interface BackupRepository extends JpaRepository<Backup , Long>{
 
     List<Backup> findAllByOwnerUsername(String username);

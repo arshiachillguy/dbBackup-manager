@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backup Manager</title>
+    <script>
+      (function () {
+        try {
+          var stored = JSON.parse(
+            localStorage.getItem('backup-manager.preferences') || 'null',
+          )
+          var theme =
+            stored && (stored.theme === 'dark' || stored.theme === 'light')
+              ? stored.theme
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          document.documentElement.dataset.theme = theme
+          document.documentElement.style.colorScheme = theme
+        } catch (error) {
+          document.documentElement.dataset.theme = 'light'
+        }
+      })()
+    </script>
+    <script type="module" crossorigin src="/assets/index-Lg6lo5HT.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BBoXX5Bf.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
