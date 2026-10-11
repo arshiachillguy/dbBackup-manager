@@ -31,3 +31,17 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local application data and database backups
+/data/
+/backups/
+
+# Release package archive
+/backup-manager-release.tar.gz
+
+# Built release JAR
+/release/*.jar
+
+# Runtime files
+/release/*.log
+/release/*.pid
